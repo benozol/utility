@@ -1,13 +1,7 @@
 package org.biosemantics.utility.social;
 
-import java.text.DateFormat;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
-import org.biosemantics.utility.social.Post.Network;
-import org.biosemantics.utility.social.Post.UrlWithTitle;
 
 public class Post {
 	public static class UrlWithTitle {

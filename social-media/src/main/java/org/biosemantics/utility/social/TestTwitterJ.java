@@ -1,15 +1,13 @@
 package org.biosemantics.utility.social;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Properties;
 
 import org.apache.commons.lang.StringUtils;
 import org.biosemantics.utility.social.Post.Network;
@@ -39,14 +37,9 @@ public class TestTwitterJ implements SocialSearch {
 	public static void main(String[] args) {
 		List<String> keywords = SearchConfig.getInstance().getKeywordLists().get(0);
 
-		Properties prop = new Properties();
 		try {
-			prop.load(new FileInputStream(Utils.getResourceFile(TestTwitterJ.class, "/output.properties")));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		try {
-			Writer writer = new FileWriter(new File(prop.getProperty("test_twitter_streaming_output")));
+			String filename = TestSocialSearch.outputProperties.getProperty("test_twitter_streaming_output");
+			Writer writer = new FileWriter(filename);
 			new TestTwitterJ().getSocialStream().stream(keywords, new PostStore(writer));
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -105,6 +98,7 @@ public class TestTwitterJ implements SocialSearch {
 
 				twitterStream.addListener(listener);
 				FilterQuery filterQuery = new FilterQuery(0, null, new String[] { query(keywords) });
+				System.out.println("Start streaming on " + keywords);
 				twitterStream.filter(filterQuery);
 			}
 		};

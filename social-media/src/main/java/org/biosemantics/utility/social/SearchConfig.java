@@ -1,11 +1,8 @@
 package org.biosemantics.utility.social;
 
-import java.io.File;
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -14,6 +11,7 @@ import org.apache.commons.lang.StringUtils;
 
 public class SearchConfig {
 	
+	private static final String KEYWORDS = "/keywords";
 	private static SearchConfig instance = null;
 	
 	public static SearchConfig getInstance() {
@@ -26,20 +24,16 @@ public class SearchConfig {
 	private List<List<String>> keywordLists;
 	
 	private SearchConfig() {
-		File keywordsFile = Utils.getResourceFile(this.getClass(), "/keywords");
+		BufferedReader in = new BufferedReader(new InputStreamReader(getClass().getResourceAsStream(KEYWORDS)));
+		keywordLists = new LinkedList<>();
 		try {
-			Path path = Paths.get(keywordsFile.getPath());
-			keywordLists = new LinkedList<>();
-			for (String line : Files.readAllLines(path, Charset.defaultCharset())) {
+			for (String line = in.readLine(); line != null; line = in.readLine()) {
 				if (line.length() > 0 && line.charAt(0) != '#') {
 					List<String> keywords = Arrays.asList(StringUtils.split(line, " "));
-					keywordLists.add(keywords); 
+					keywordLists.add(keywords);
 				}
 			}
-		} catch (IOException e) {
-			e.printStackTrace();
-			throw new RuntimeException("Couldn't read keywords file", e);
-		}
+		} catch (IOException e) {}
 	}
 
 	public List<List<String>> getKeywordLists() {

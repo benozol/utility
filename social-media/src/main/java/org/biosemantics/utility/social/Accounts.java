@@ -1,10 +1,10 @@
 package org.biosemantics.utility.social;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
 
 public enum Accounts {
+
 	
 	GOOGLEPLUS_API_KEY("googleplus_api_key"),
 	
@@ -18,11 +18,13 @@ public enum Accounts {
 	TWITTER_TOKEN_SECRET("twitter_token_secret"),
 	TWITTER_APPLICATION_ID("twitter_application_id");
 	
+	private static final String ACCESS_PROPERTIES = "/access.properties";
+
 	private String value;
 	private Properties prop = new Properties();
 	{
 		try {
-			prop.load(new FileInputStream(Utils.getResourceFile(Accounts.class, "/access.properties")));
+			prop.load(getClass().getResourceAsStream(ACCESS_PROPERTIES));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

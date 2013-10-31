@@ -3,8 +3,10 @@ package org.biosemantics.utility.social;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Writer;
 import java.util.List;
+import java.util.Properties;
 
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -17,6 +19,16 @@ public class TestSocialSearch {
 		new TestRestFb(),
 		new TestTwitterJ()
 	};
+
+	static Properties outputProperties = new Properties();
+	static {
+		try {
+			InputStream stream = TestTwitterJ.class.getResourceAsStream("/output.properties");
+			outputProperties.load(stream);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 	
 	private final class RunnableStream implements Runnable {
 		private final List<String> keywords;
@@ -36,11 +48,10 @@ public class TestSocialSearch {
 				socialStream.stream(keywords, postStore);
 			} catch (IOException e) {
 				e.printStackTrace();
-				run ();
 			}
 		}
 	}
-
+	
 	@SuppressWarnings("unused")
 	private void search(String pathname) throws IOException {
 		Writer writer = new FileWriter(new File(pathname));
@@ -84,9 +95,10 @@ public class TestSocialSearch {
 	
 	public static void main(String[] args) {
 		try {
-			new TestSocialSearch().search("/tmp/social-search.csv");
+			new TestSocialSearch().search(outputProperties.getProperty("social_search"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
+
 }
