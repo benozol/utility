@@ -6,6 +6,8 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
@@ -21,23 +23,27 @@ public class SearchConfig {
 		return instance;
 	}
 	
-	private List<String> keywords;
+	private List<List<String>> keywordLists;
 	
 	private SearchConfig() {
 		File keywordsFile = Utils.getResourceFile(this.getClass(), "/keywords");
 		try {
 			Path path = Paths.get(keywordsFile.getPath());
-			List<String> lines = Files.readAllLines(path, Charset.defaultCharset());
-			keywords = lines;
+			keywordLists = new LinkedList<>();
+			for (String line : Files.readAllLines(path, Charset.defaultCharset())) {
+				if (line.length() > 0 && line.charAt(0) != '#') {
+					List<String> keywords = Arrays.asList(StringUtils.split(line, " "));
+					keywordLists.add(keywords); 
+				}
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 			throw new RuntimeException("Couldn't read keywords file", e);
 		}
-		System.out.println("Keywords: " + StringUtils.join(keywords, ", "));
 	}
 
-	public List<String> getKeywords() {
-		return keywords;
+	public List<List<String>> getKeywordLists() {
+		return keywordLists;
 	}
 
 }
