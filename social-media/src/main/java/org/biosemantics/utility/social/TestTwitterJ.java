@@ -1,10 +1,15 @@
 package org.biosemantics.utility.social;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Writer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Properties;
 
 import org.apache.commons.lang.StringUtils;
 import org.biosemantics.utility.social.Post.Network;
@@ -31,29 +36,35 @@ public class TestTwitterJ implements SocialSearch {
 	protected static final Network NETWORK = Post.Network.TWITTER;
 	protected static final String TWITTER_COM = "http://twitter.com";
 
-//	public static void main(String[] args) {
-//		List<String> keywords = SearchConfig.getInstance().getKeywords();
-//		try {
-//			FileOutputStream out = new FileOutputStream(new File("/tmp/twitter.out"));
-//			new TestTwitterJ().search(keywords, new PostStore(out), null);
-//			new TestTwitterJ().getSocialStream().stream(keywords, new PostStore(out));
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		} finally {
-//			out.close();
-//		}
-//		out.println("ok");
-//	}
+	public static void main(String[] args) {
+		List<String> keywords = SearchConfig.getInstance().getKeywordLists().get(0);
+
+		Properties prop = new Properties();
+		try {
+			prop.load(new FileInputStream(Utils.getResourceFile(TestTwitterJ.class, "/output.properties")));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		try {
+			Writer writer = new FileWriter(new File(prop.getProperty("test_twitter_streaming_output")));
+			new TestTwitterJ().getSocialStream().stream(keywords, new PostStore(writer));
+		} catch (IOException e) {
+			e.printStackTrace();
+		} 
+	}
+	
+
+	TwitterStream twitterStream = new TwitterStreamFactory().getInstance();
+
+	public TestTwitterJ() {
+		twitterStream.setOAuthConsumer(Accounts.TWITTER_CONSUMER_KEY.getValue(),
+				Accounts.TWITTER_CONSUMER_SECRET.getValue());
+		twitterStream.setOAuthAccessToken(loadAccessToken());
+	}
 
 	public SocialStream getSocialStream() {
 		return new SocialStream() {
 			public void stream(final List<String> keywords, final PostStore postStore) {
-
-				TwitterStream twitterStream = new TwitterStreamFactory().getInstance();
-				twitterStream.setOAuthConsumer(Accounts.TWITTER_CONSUMER_KEY.getValue(),
-						Accounts.TWITTER_CONSUMER_SECRET.getValue());
-				twitterStream.setOAuthAccessToken(loadAccessToken());
-
 				StatusListener listener = new StatusListener() {
 					@Override
 					public void onStatus(Status status) {
@@ -121,10 +132,9 @@ public class TestTwitterJ implements SocialSearch {
 
 	public void search(List<String> keywords, PostStore postStore, Date since) throws IOException {
 		TwitterFactory factory = new TwitterFactory();
-		AccessToken accessToken = loadAccessToken();
 		Twitter twitter = factory.getInstance();
 		twitter.setOAuthConsumer(Accounts.TWITTER_CONSUMER_KEY.getValue(), Accounts.TWITTER_CONSUMER_SECRET.getValue());
-		twitter.setOAuthAccessToken(accessToken);
+		twitter.setOAuthAccessToken(loadAccessToken());
 		Query query = new Query(query(keywords));
 		if (since != null)
 			query.setSince(new SimpleDateFormat("YYYY-MM-dd").format(since));
