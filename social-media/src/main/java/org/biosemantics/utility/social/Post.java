@@ -33,7 +33,7 @@ public class Post {
 			throw new Error("Post.Network.toString");
 		}
 	}
-	private List<String> keywords;
+	private String queryName;
 	private String id;
 	private Network network;
 	private String title;
@@ -41,9 +41,9 @@ public class Post {
 	private String content;
 	private Date published;
 	private List<String> referredUrls;
-	public Post(List<String> keywords, String id, Network network, String title, String url,
+	public Post(String queryName, String id, Network network, String title, String url,
 			String content, Date published, List<String> referredUrls) {
-		this.keywords = keywords;
+		this.queryName = queryName;
 		this.id = id;
 		this.network = network;
 		this.title = title;
@@ -52,8 +52,8 @@ public class Post {
 		this.published = published;
 		this.referredUrls = referredUrls; 
 	}
-	public List<String> getKeywords() {
-		return keywords;
+	public String getQueryName() {
+		return queryName;
 	}
 	public String getId() {
 		return id;

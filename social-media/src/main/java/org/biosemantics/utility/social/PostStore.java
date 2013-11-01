@@ -22,8 +22,8 @@ public class PostStore {
 	private static final String TITLE_COLUMN = "title";
 	private static final String ID_COLUMN = "id";
 	private static final String NETWORK_COLUMN = "network";
-	private static final String KEYWORDS_COLUMN = "keywords";
-	private static final List<String> FIELDS = Arrays.asList(ID_COLUMN, NETWORK_COLUMN, KEYWORDS_COLUMN, TITLE_COLUMN, CONTENT_COLUMN, DATE_COLUMN, URL_COLUMN, REFERRED_URLS_COLUMN);
+	private static final String QUERY_COLUMN = "query";
+	private static final List<String> FIELDS = Arrays.asList(ID_COLUMN, NETWORK_COLUMN, QUERY_COLUMN, TITLE_COLUMN, CONTENT_COLUMN, DATE_COLUMN, URL_COLUMN, REFERRED_URLS_COLUMN);
 
 	private CSVWriter csvWriter;
 
@@ -37,7 +37,7 @@ public class PostStore {
 		Map<String, String> map = new HashMap<>();
 		map.put(ID_COLUMN,  post.getId());
 		map.put(NETWORK_COLUMN,  post.getNetwork().toString());
-		map.put(KEYWORDS_COLUMN, StringUtils.join(post.getKeywords(), " "));
+		map.put(QUERY_COLUMN, post.getQueryName());
 		map.put(TITLE_COLUMN, cleanup(StringUtils.defaultString(post.getTitle(), "")));
 		map.put(CONTENT_COLUMN, cleanup(post.getContent()));
 		map.put(DATE_COLUMN, DateFormat.getInstance().format(post.getPublished()));

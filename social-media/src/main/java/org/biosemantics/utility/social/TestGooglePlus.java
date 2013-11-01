@@ -100,7 +100,8 @@ public class TestGooglePlus implements SocialSearch {
 			}
 		}
 		Date published = new Date(activity.getPublished().getValue());
-		Post post = new Post(keywords, id, NETWORK, title, url, content, published, referredUrls);
+		String queryName = StringUtils.join(keywords, " ");
+		Post post = new Post(queryName, id, NETWORK, title, url, content, published, referredUrls);
 		return post;
 	}
 	

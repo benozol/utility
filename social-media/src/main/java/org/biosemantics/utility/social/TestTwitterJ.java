@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import twitter4j.FilterQuery;
+import twitter4j.GeoLocation;
 import twitter4j.Query;
 import twitter4j.QueryResult;
 import twitter4j.StallWarning;
@@ -28,42 +29,135 @@ import twitter4j.TwitterStream;
 import twitter4j.TwitterStreamFactory;
 import twitter4j.URLEntity;
 import twitter4j.auth.AccessToken;
+import twitter4j.auth.OAuthSupport;
 
 public class TestTwitterJ implements SocialSearch {
+	
+	static interface TwitterSocialStream extends SocialStream {
+		void stream(List<String> keywords, double[][] locations, PostStore postStore);
+		void stream(String filterName, FilterQuery filterQuery, PostStore postStore);
+	}
 
 	protected static final Network NETWORK = Post.Network.TWITTER;
 	protected static final String TWITTER_COM = "http://twitter.com";
 
-	public static void main(String[] args) {
-		List<String> keywords = SearchConfig.getInstance().getKeywordLists().get(0);
-
-		try {
-			String filename = TestSocialSearch.outputProperties.getProperty("test_twitter_streaming_output");
-			Writer writer = new FileWriter(filename);
-			new TestTwitterJ().getSocialStream().stream(keywords, new PostStore(writer));
-		} catch (IOException e) {
-			e.printStackTrace();
-		} 
+	public static class ByKeywords {
+		public static void main(String[] args) {
+			try {
+				List<String> keywords;
+				String filename;
+				TestTwitterJ testTwitterJ;
+				if (args.length == 2) {
+					filename = args[0];
+					keywords = Arrays.asList(StringUtils.split(args[1], ","));
+					testTwitterJ = new TestTwitterJ();
+				} else {
+					System.err.println("Arguments: <filename> <keywords>");
+					throw new SecurityException();
+				}
+				Writer writer = new FileWriter(filename);
+				testTwitterJ.getTwitterSocialStream().stream(keywords, new PostStore(writer));
+			} catch (IOException e) {
+			}
+		}
 	}
-	
 
-	TwitterStream twitterStream = new TwitterStreamFactory().getInstance();
+	public static class ByLocations {
+		public static void main(String[] args) {
+			try {
+				String filename;
+				TestTwitterJ testTwitterJ;
+				double[][] locations;
+				if (args.length == 2) {
+					filename = args[0];
+					String[] locationStrings = StringUtils.split(args[1], ",");
+					double minLongitude = Double.parseDouble(locationStrings[0]);
+					double minLatitude = Double.parseDouble(locationStrings[1]);;
+					double maxLongitude = Double.parseDouble(locationStrings[2]);
+					double maxLatitude = Double.parseDouble(locationStrings[3]);;
+					locations = new double[][] {
+							{ minLongitude , minLatitude } , { maxLongitude , maxLatitude }
+					};
+					testTwitterJ = new TestTwitterJ();
+				} else {
+					System.err.println("Arguments: <filename> <keywords>");
+					throw new SecurityException();
+				}
+				Writer writer = new FileWriter(filename);
+				String locationString = String.format("%f,%f,%f,%f", locations[0][0], locations[0][1], locations[1][0], locations[1][1]);
+				System.out.println(String.format("Streaming within coordinates %s", locationString));
+				FilterQuery filterQuery = new FilterQuery();
+				filterQuery.locations(locations);
+				testTwitterJ.getTwitterSocialStream().stream(locationString, filterQuery, new PostStore(writer));
+			} catch (IOException e) {
+			}
+		}
+	}
+
+
+	private String consumerKey;
+	private String consumerSecret;
+	private String tokenKey;
+	private String tokenSecret;
 
 	public TestTwitterJ() {
-		twitterStream.setOAuthConsumer(Accounts.TWITTER_CONSUMER_KEY.getValue(),
-				Accounts.TWITTER_CONSUMER_SECRET.getValue());
-		twitterStream.setOAuthAccessToken(loadAccessToken());
+		this.consumerKey = Accounts.TWITTER_CONSUMER_KEY.getValue();
+		this.consumerSecret = Accounts.TWITTER_CONSUMER_SECRET.getValue();
+		this.tokenKey = Accounts.TWITTER_TOKEN_KEY.getValue();
+		this.tokenSecret = Accounts.TWITTER_TOKEN_SECRET.getValue();
 	}
 
+	
+	public TestTwitterJ(String consumerKey, String consumerSecret, String tokenKey, String tokenSecret) {
+		this.consumerKey = consumerKey;
+		this.consumerSecret = consumerSecret;
+		this.tokenKey = tokenKey;
+		this.tokenSecret = tokenSecret;
+	}
+	
+	private void initOAuth(OAuthSupport oauth) {
+		oauth.setOAuthConsumer(consumerKey, consumerSecret);
+		AccessToken accessToken = new AccessToken(tokenKey, tokenSecret);
+		oauth.setOAuthAccessToken(accessToken);
+	}
+	
 	public SocialStream getSocialStream() {
-		return new SocialStream() {
-			public void stream(final List<String> keywords, final PostStore postStore) {
+		return getTwitterSocialStream();
+	}
+
+	public TwitterSocialStream getTwitterSocialStream() {
+		return new TwitterSocialStream() {
+
+			@Override
+			public void stream(List<String> keywords, double[][] locations, PostStore postStore) {
+				FilterQuery filterQuery = new FilterQuery(0, null, new String[] { query(keywords) }, locations);
+				String filterName = StringUtils.join(keywords, " ") + " @ " + StringUtils.join(locations, ",");
+				stream(filterName, filterQuery, postStore);
+			}
+			
+			public void stream(List<String> keywords, PostStore postStore) {
+				FilterQuery filterQuery = new FilterQuery(0, null, new String[] { query(keywords) });
+				String filterName = StringUtils.join(keywords, " ");
+				stream(filterName, filterQuery, postStore);
+			}
+			
+			public void stream(final String filterName, final FilterQuery filterQuery, final PostStore postStore) {
 				StatusListener listener = new StatusListener() {
 					@Override
 					public void onStatus(Status status) {
 
 						try {
-							postStore.store(post(keywords, status));
+							GeoLocation geoLocation = status.getGeoLocation();
+							if (geoLocation != null) {
+								System.out.println(String.format("Tweet by @%s at %d/%d",
+										status.getUser().getName(), geoLocation.getLongitude(), geoLocation.getLatitude()));
+							}
+							String userLocation = status.getUser().getLocation();
+							if (userLocation != null) {
+								System.out.println(String.format("Tweet by @%s at %s",
+										status.getUser().getName(), userLocation));
+							}
+							postStore.store(post(filterName, status));
 						} catch (IOException e) {
 							logger.error("Couldn't store post {}", status.getId());
 							e.printStackTrace();
@@ -96,9 +190,9 @@ public class TestTwitterJ implements SocialSearch {
 					}
 				};
 
+				TwitterStream twitterStream = new TwitterStreamFactory().getInstance();
+				initOAuth(twitterStream);
 				twitterStream.addListener(listener);
-				FilterQuery filterQuery = new FilterQuery(0, null, new String[] { query(keywords) });
-				System.out.println("Start streaming on " + keywords);
 				twitterStream.filter(filterQuery);
 			}
 		};
@@ -108,7 +202,7 @@ public class TestTwitterJ implements SocialSearch {
 		return StringUtils.join(keywords, " ");
 	}
 
-	private Post post(List<String> keywords, Status status) {
+	private Post post(String filterName, Status status) {
 		String id = Long.toString(status.getId());
 		String url = String.format("%s/%s/status/%s", TWITTER_COM, status.getUser().getName(), status.getId());
 		String content = status.getText();
@@ -120,15 +214,13 @@ public class TestTwitterJ implements SocialSearch {
 				referredUrls.add(referredUrl.getExpandedURL() != null ? referredUrl.getExpandedURL() : referredUrl.getDisplayURL());
 			}
 		}
-		return new Post(keywords, id, NETWORK, null, url, content, published, referredUrls);
+		return new Post(filterName, id, NETWORK, null, url, content, published, referredUrls);
 	}
 
 
 	public void search(List<String> keywords, PostStore postStore, Date since) throws IOException {
-		TwitterFactory factory = new TwitterFactory();
-		Twitter twitter = factory.getInstance();
-		twitter.setOAuthConsumer(Accounts.TWITTER_CONSUMER_KEY.getValue(), Accounts.TWITTER_CONSUMER_SECRET.getValue());
-		twitter.setOAuthAccessToken(loadAccessToken());
+		Twitter twitter = new TwitterFactory().getInstance();
+		initOAuth(twitter);
 		Query query = new Query(query(keywords));
 		if (since != null)
 			query.setSince(new SimpleDateFormat("YYYY-MM-dd").format(since));
@@ -139,19 +231,14 @@ public class TestTwitterJ implements SocialSearch {
 				QueryResult search = twitter.search(query);
 				List<Status> tweets = search.getTweets();
 				logger.info("There are {} tweets", tweets.size());
+				String filterName = StringUtils.join(keywords, " ");
 				for (Status status : tweets)
-					postStore.store(post(keywords, status));
+					postStore.store(post(filterName, status));
 				query = search.nextQuery();
 			}
 		} catch (TwitterException e) {
 			e.printStackTrace();
 		}
-	}
-
-	private static AccessToken loadAccessToken() {
-		String token = Accounts.TWITTER_TOKEN_KEY.getValue();
-		String tokenSecret = Accounts.TWITTER_TOKEN_SECRET.getValue();
-		return new AccessToken(token, tokenSecret);
 	}
 
 	private static final Logger logger = LoggerFactory.getLogger(TestTwitterJ.class);
