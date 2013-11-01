@@ -39,15 +39,17 @@ public class Post {
 	private String title;
 	private String url;
 	private String content;
+	private String location;
 	private Date published;
 	private List<String> referredUrls;
-	public Post(String queryName, String id, Network network, String title, String url,
+	public Post(String queryName, String id, Network network, String title, String url, String location,
 			String content, Date published, List<String> referredUrls) {
 		this.queryName = queryName;
 		this.id = id;
 		this.network = network;
 		this.title = title;
 		this.url = url;
+		this.location = location;
 		this.content = content;
 		this.published = published;
 		this.referredUrls = referredUrls; 
@@ -63,6 +65,9 @@ public class Post {
 	}
 	public String getUrl() {
 		return url;
+	}
+	public String getLocation() {
+		return location;
 	}
 	public String getContent() {
 		return content;

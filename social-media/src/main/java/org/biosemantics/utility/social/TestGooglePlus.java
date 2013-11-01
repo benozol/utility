@@ -21,6 +21,7 @@ import com.google.api.services.plus.model.Activity;
 import com.google.api.services.plus.model.Activity.PlusObject;
 import com.google.api.services.plus.model.Activity.PlusObject.Attachments;
 import com.google.api.services.plus.model.ActivityFeed;
+import com.google.api.services.plus.model.Place.Position;
 
 public class TestGooglePlus implements SocialSearch {
 
@@ -101,7 +102,12 @@ public class TestGooglePlus implements SocialSearch {
 		}
 		Date published = new Date(activity.getPublished().getValue());
 		String queryName = StringUtils.join(keywords, " ");
-		Post post = new Post(queryName, id, NETWORK, title, url, content, published, referredUrls);
+		String location = null;
+		if (activity.getLocation() != null) {
+			Position position = activity.getLocation().getPosition();
+			location = String.format("%f/%f", position.getLongitude(), position.getLatitude());
+		}
+		Post post = new Post(queryName, id, NETWORK, title, url, location, content, published, referredUrls);
 		return post;
 	}
 	

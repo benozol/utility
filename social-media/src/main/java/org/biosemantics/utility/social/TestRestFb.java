@@ -84,7 +84,7 @@ public class TestRestFb implements SocialSearch {
 		if (fbPost.getLink() != null) 
 			referredUrls = Arrays.asList(fbPost.getLink());
 		String queryName = StringUtils.join(keywords, " ");
-		return new Post(queryName, id, NETWORK, title, url, content, published, referredUrls);
+		return new Post(queryName, id, NETWORK, title, url, null, content, published, referredUrls);
 	}
 	
 	private static final Logger logger = LoggerFactory.getLogger(TestRestFb.class);

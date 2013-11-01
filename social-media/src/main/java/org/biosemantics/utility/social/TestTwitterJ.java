@@ -49,12 +49,10 @@ public class TestTwitterJ implements SocialSearch {
 				TestTwitterJ testTwitterJ;
 				if (args.length == 2) {
 					filename = args[0];
-					keywords = Arrays.asList(StringUtils.split(args[1], ","));
+					keywords = Arrays.asList(StringUtils.split(args[1], " "));
 					testTwitterJ = new TestTwitterJ();
-				} else {
-					System.err.println("Arguments: <filename> <keywords>");
-					throw new SecurityException();
-				}
+				} else
+					throw new SecurityException("Arguments: <filename> <keywords>");
 				Writer writer = new FileWriter(filename);
 				testTwitterJ.getTwitterSocialStream().stream(keywords, new PostStore(writer));
 			} catch (IOException e) {
@@ -88,7 +86,7 @@ public class TestTwitterJ implements SocialSearch {
 				System.out.println(String.format("Streaming within coordinates %s", locationString));
 				FilterQuery filterQuery = new FilterQuery();
 				filterQuery.locations(locations);
-				testTwitterJ.getTwitterSocialStream().stream(locationString, filterQuery, new PostStore(writer));
+				testTwitterJ.stream(locationString, filterQuery, new PostStore(writer));
 			} catch (IOException e) {
 			}
 		}
@@ -116,6 +114,7 @@ public class TestTwitterJ implements SocialSearch {
 	}
 	
 	private void initOAuth(OAuthSupport oauth) {
+		System.out.println("INIT OAUTH");
 		oauth.setOAuthConsumer(consumerKey, consumerSecret);
 		AccessToken accessToken = new AccessToken(tokenKey, tokenSecret);
 		oauth.setOAuthAccessToken(accessToken);
@@ -124,76 +123,66 @@ public class TestTwitterJ implements SocialSearch {
 	public SocialStream getSocialStream() {
 		return getTwitterSocialStream();
 	}
+	
+	public void stream(final String filterName, final FilterQuery filterQuery, final PostStore postStore) {
+		StatusListener listener = new StatusListener() {
+			@Override
+			public void onStatus(Status status) {
 
-	public TwitterSocialStream getTwitterSocialStream() {
-		return new TwitterSocialStream() {
+				try {
+					postStore.store(post(filterName, status));
+				} catch (IOException e) {
+					logger.error("Couldn't store post {}", status.getId());
+					e.printStackTrace();
+				}
+			}
 
 			@Override
-			public void stream(List<String> keywords, double[][] locations, PostStore postStore) {
-				FilterQuery filterQuery = new FilterQuery(0, null, new String[] { query(keywords) }, locations);
-				String filterName = StringUtils.join(keywords, " ") + " @ " + StringUtils.join(locations, ",");
-				stream(filterName, filterQuery, postStore);
+			public void onDeletionNotice(StatusDeletionNotice statusDeletionNotice) {
+				logger.error("Got a status deletion notice id: {}", statusDeletionNotice.getStatusId());
 			}
+
+			@Override
+			public void onTrackLimitationNotice(int numberOfLimitedStatuses) {
+				logger.error("Got track limitation notice: {}", numberOfLimitedStatuses);
+			}
+
+			@Override
+			public void onScrubGeo(long userId, long upToStatusId) {
+				logger.error("Got scrub_geo event userId:{} upToStatusId:{}", new Object[] { userId, upToStatusId });
+			}
+
+			@Override
+			public void onStallWarning(StallWarning warning) {
+				logger.error("Got stall warning: {}", warning);
+			}
+
+			@Override
+			public void onException(Exception ex) {
+				logger.error("", ex);
+			}
+		};
+
+		TwitterStream twitterStream = new TwitterStreamFactory().getInstance();
+		initOAuth(twitterStream);
+		twitterStream.addListener(listener);
+		twitterStream.filter(filterQuery);
+	}
+
+	public SocialStream getTwitterSocialStream() {
+		return new SocialStream() {
+//
+//			@Override
+//			public void stream(List<String> keywords, double[][] locations, PostStore postStore) {
+//				FilterQuery filterQuery = new FilterQuery(0, null, new String[] { query(keywords) }, locations);
+//				String filterName = StringUtils.join(keywords, " ") + " @ " + StringUtils.join(locations, ",");
+//				stream(filterName, filterQuery, postStore);
+//			}
 			
 			public void stream(List<String> keywords, PostStore postStore) {
 				FilterQuery filterQuery = new FilterQuery(0, null, new String[] { query(keywords) });
 				String filterName = StringUtils.join(keywords, " ");
-				stream(filterName, filterQuery, postStore);
-			}
-			
-			public void stream(final String filterName, final FilterQuery filterQuery, final PostStore postStore) {
-				StatusListener listener = new StatusListener() {
-					@Override
-					public void onStatus(Status status) {
-
-						try {
-							GeoLocation geoLocation = status.getGeoLocation();
-							if (geoLocation != null) {
-								System.out.println(String.format("Tweet by @%s at %d/%d",
-										status.getUser().getName(), geoLocation.getLongitude(), geoLocation.getLatitude()));
-							}
-							String userLocation = status.getUser().getLocation();
-							if (userLocation != null) {
-								System.out.println(String.format("Tweet by @%s at %s",
-										status.getUser().getName(), userLocation));
-							}
-							postStore.store(post(filterName, status));
-						} catch (IOException e) {
-							logger.error("Couldn't store post {}", status.getId());
-							e.printStackTrace();
-						}
-					}
-
-					@Override
-					public void onDeletionNotice(StatusDeletionNotice statusDeletionNotice) {
-						logger.error("Got a status deletion notice id: {}", statusDeletionNotice.getStatusId());
-					}
-
-					@Override
-					public void onTrackLimitationNotice(int numberOfLimitedStatuses) {
-						logger.error("Got track limitation notice: {}", numberOfLimitedStatuses);
-					}
-
-					@Override
-					public void onScrubGeo(long userId, long upToStatusId) {
-						logger.error("Got scrub_geo event userId:{} upToStatusId:{}", new Object[] { userId, upToStatusId });
-					}
-
-					@Override
-					public void onStallWarning(StallWarning warning) {
-						logger.error("Got stall warning: {}", warning);
-					}
-
-					@Override
-					public void onException(Exception ex) {
-						logger.error("", ex);
-					}
-				};
-
-				TwitterStream twitterStream = new TwitterStreamFactory().getInstance();
-				initOAuth(twitterStream);
-				twitterStream.addListener(listener);
-				twitterStream.filter(filterQuery);
+				TestTwitterJ.this.stream(filterName, filterQuery, postStore);
 			}
 		};
 	}
@@ -208,13 +197,14 @@ public class TestTwitterJ implements SocialSearch {
 		String content = status.getText();
 		Date published = status.getCreatedAt();
 		List<String> referredUrls = null;
+		String location = status.getGeoLocation().toString();
 		if (status.getURLEntities() != null) {
 			referredUrls = new LinkedList<>();
 			for (URLEntity referredUrl : status.getURLEntities()) {
 				referredUrls.add(referredUrl.getExpandedURL() != null ? referredUrl.getExpandedURL() : referredUrl.getDisplayURL());
 			}
 		}
-		return new Post(filterName, id, NETWORK, null, url, content, published, referredUrls);
+		return new Post(filterName, id, NETWORK, null, url, location, content, published, referredUrls);
 	}
 
 

@@ -20,10 +20,11 @@ public class PostStore {
 	private static final String DATE_COLUMN = "date";
 	private static final String CONTENT_COLUMN = "content";
 	private static final String TITLE_COLUMN = "title";
+	private static final String LOCATION_COLUMN = "location";
 	private static final String ID_COLUMN = "id";
 	private static final String NETWORK_COLUMN = "network";
 	private static final String QUERY_COLUMN = "query";
-	private static final List<String> FIELDS = Arrays.asList(ID_COLUMN, NETWORK_COLUMN, QUERY_COLUMN, TITLE_COLUMN, CONTENT_COLUMN, DATE_COLUMN, URL_COLUMN, REFERRED_URLS_COLUMN);
+	private static final List<String> FIELDS = Arrays.asList(ID_COLUMN, NETWORK_COLUMN, QUERY_COLUMN, TITLE_COLUMN, LOCATION_COLUMN, CONTENT_COLUMN, DATE_COLUMN, URL_COLUMN, REFERRED_URLS_COLUMN);
 
 	private CSVWriter csvWriter;
 
@@ -39,6 +40,7 @@ public class PostStore {
 		map.put(NETWORK_COLUMN,  post.getNetwork().toString());
 		map.put(QUERY_COLUMN, post.getQueryName());
 		map.put(TITLE_COLUMN, cleanup(StringUtils.defaultString(post.getTitle(), "")));
+		map.put(LOCATION_COLUMN, post.getLocation());
 		map.put(CONTENT_COLUMN, cleanup(post.getContent()));
 		map.put(DATE_COLUMN, DateFormat.getInstance().format(post.getPublished()));
 		map.put(URL_COLUMN, post.getUrl());
@@ -46,7 +48,7 @@ public class PostStore {
 	}
 	
 	private String cleanup(String string) {
-		return StringUtils.defaultString(string, "").replace("\n", " ");
+		return string.replace("\n", " ");
 	}
 	
 	public synchronized void store(Post post) throws IOException {
@@ -58,7 +60,7 @@ public class PostStore {
 					for (String url : post.getReferredUrls())
 						row.add(url);
 			} else
-				row.add(map.get(key));
+				row.add(StringUtils.defaultString(map.get(key), ""));
 		csvWriter.writeNext(row.toArray(new String[]{}));
 		csvWriter.flush();
 	}
